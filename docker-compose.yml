@@ -1,0 +1,127 @@
+version: '3.8'
+
+services:
+  # Development environment
+  echoloc-dev:
+    build:
+      context: .
+      target: development
+    container_name: echoloc-nn-dev
+    volumes:
+      - .:/app
+      - echoloc-data:/app/data
+      - echoloc-models:/app/models
+    ports:
+      - "8080:8080"  # Visualization server
+      - "8888:8888"  # Jupyter notebook
+    environment:
+      - PYTHONPATH=/app
+      - CUDA_VISIBLE_DEVICES=0
+    command: >
+      bash -c "
+        pre-commit install &&
+        jupyter lab --ip=0.0.0.0 --port=8888 --no-browser --allow-root
+      "
+    stdin_open: true
+    tty: true
+
+  # Production inference server
+  echoloc-prod:
+    build:
+      context: .
+      target: production
+    container_name: echoloc-nn-prod
+    ports:
+      - "8080:8080"
+    volumes:
+      - echoloc-models:/home/echoloc/models:ro
+    environment:
+      - MODEL_PATH=/home/echoloc/models/echoloc-indoor-v2.pt
+      - INFERENCE_BATCH_SIZE=1
+      - DEVICE=cpu
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Hardware testing environment
+  echoloc-hardware:
+    build:
+      context: .
+      target: hardware-test
+    container_name: echoloc-nn-hardware
+    privileged: true  # Required for hardware access
+    volumes:
+      - /dev:/dev
+      - .:/app
+    environment:
+      - ARDUINO_PORT=/dev/ttyUSB0
+    command: ["python", "-m", "pytest", "tests/", "-m", "hardware", "-v"]
+
+  # Documentation server
+  docs:
+    image: nginx:alpine
+    container_name: echoloc-nn-docs
+    ports:
+      - "8000:80"
+    volumes:
+      - ./docs/_build/html:/usr/share/nginx/html:ro
+    depends_on:
+      - echoloc-dev
+
+  # Redis for caching (production deployments)
+  redis:
+    image: redis:7-alpine
+    container_name: echoloc-nn-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes
+
+  # InfluxDB for metrics collection
+  influxdb:
+    image: influxdb:2.0-alpine
+    container_name: echoloc-nn-influxdb
+    ports:
+      - "8086:8086"
+    volumes:
+      - influxdb-data:/var/lib/influxdb2
+    environment:
+      - INFLUXDB_DB=echoloc
+      - INFLUXDB_ADMIN_USER=admin
+      - INFLUXDB_ADMIN_PASSWORD=admin123
+      - INFLUXDB_HTTP_AUTH_ENABLED=true
+
+  # Grafana for visualization
+  grafana:
+    image: grafana/grafana:latest
+    container_name: echoloc-nn-grafana
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin123
+    depends_on:
+      - influxdb
+
+volumes:
+  echoloc-data:
+    driver: local
+  echoloc-models:
+    driver: local
+  redis-data:
+    driver: local
+  influxdb-data:
+    driver: local
+  grafana-data:
+    driver: local
+
+networks:
+  default:
+    name: echoloc-nn-network
