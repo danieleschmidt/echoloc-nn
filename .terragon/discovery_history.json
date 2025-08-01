@@ -1,0 +1,132 @@
+[
+  {
+    "timestamp": "2025-08-01T02:35:10.264237",
+    "signals_harvested": 9,
+    "items_discovered": 5,
+    "value_items": [
+      {
+        "title": "Address TODO: in value_discovery.py",
+        "description": "if pattern in [\"TODO:\", \"FIXME:\"]:",
+        "type": "technical_debt",
+        "file": "./.terragon/value_discovery.py",
+        "line": "208",
+        "priority": 0.6,
+        "effort_estimate": "small",
+        "value_category": "code_quality",
+        "final_priority": 0.6,
+        "priority_category": "high"
+      },
+      {
+        "title": "Address TODO: in value_discovery.py",
+        "description": "\"TODO:\": 0.6,",
+        "type": "technical_debt",
+        "file": "./.terragon/value_discovery.py",
+        "line": "324",
+        "priority": 0.6,
+        "effort_estimate": "small",
+        "value_category": "code_quality",
+        "final_priority": 0.6,
+        "priority_category": "high"
+      },
+      {
+        "title": "Address FIXME: in value_discovery.py",
+        "description": "if pattern in [\"TODO:\", \"FIXME:\"]:",
+        "type": "technical_debt",
+        "file": "./.terragon/value_discovery.py",
+        "line": "208",
+        "priority": 0.8,
+        "effort_estimate": "small",
+        "value_category": "code_quality",
+        "final_priority": 0.8,
+        "priority_category": "critical"
+      },
+      {
+        "title": "Address FIXME: in value_discovery.py",
+        "description": "\"FIXME:\": 0.8,",
+        "type": "technical_debt",
+        "file": "./.terragon/value_discovery.py",
+        "line": "323",
+        "priority": 0.8,
+        "effort_estimate": "small",
+        "value_category": "code_quality",
+        "final_priority": 0.8,
+        "priority_category": "critical"
+      },
+      {
+        "title": "Setup automated dependency scanning",
+        "description": "Configure automated dependency vulnerability scanning",
+        "type": "security",
+        "priority": 0.8,
+        "effort_estimate": "small",
+        "value_category": "security",
+        "final_priority": 0.96,
+        "priority_category": "critical"
+      }
+    ],
+    "execution_plan": {
+      "immediate_actions": [
+        {
+          "title": "Setup automated dependency scanning",
+          "description": "Configure automated dependency vulnerability scanning",
+          "type": "security",
+          "priority": 0.8,
+          "effort_estimate": "small",
+          "value_category": "security",
+          "final_priority": 0.96,
+          "priority_category": "critical"
+        },
+        {
+          "title": "Address FIXME: in value_discovery.py",
+          "description": "if pattern in [\"TODO:\", \"FIXME:\"]:",
+          "type": "technical_debt",
+          "file": "./.terragon/value_discovery.py",
+          "line": "208",
+          "priority": 0.8,
+          "effort_estimate": "small",
+          "value_category": "code_quality",
+          "final_priority": 0.8,
+          "priority_category": "critical"
+        },
+        {
+          "title": "Address FIXME: in value_discovery.py",
+          "description": "\"FIXME:\": 0.8,",
+          "type": "technical_debt",
+          "file": "./.terragon/value_discovery.py",
+          "line": "323",
+          "priority": 0.8,
+          "effort_estimate": "small",
+          "value_category": "code_quality",
+          "final_priority": 0.8,
+          "priority_category": "critical"
+        }
+      ],
+      "scheduled_actions": [
+        {
+          "title": "Address TODO: in value_discovery.py",
+          "description": "if pattern in [\"TODO:\", \"FIXME:\"]:",
+          "type": "technical_debt",
+          "file": "./.terragon/value_discovery.py",
+          "line": "208",
+          "priority": 0.6,
+          "effort_estimate": "small",
+          "value_category": "code_quality",
+          "final_priority": 0.6,
+          "priority_category": "high"
+        },
+        {
+          "title": "Address TODO: in value_discovery.py",
+          "description": "\"TODO:\": 0.6,",
+          "type": "technical_debt",
+          "file": "./.terragon/value_discovery.py",
+          "line": "324",
+          "priority": 0.6,
+          "effort_estimate": "small",
+          "value_category": "code_quality",
+          "final_priority": 0.6,
+          "priority_category": "high"
+        }
+      ],
+      "manual_review_required": []
+    }
+  }
+]
