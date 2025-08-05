@@ -1,6 +1,6 @@
-# EchoLoc-NN
+# EchoLoc-NN with Quantum-Inspired Task Planning
 
-End-to-end ultrasonic localization toolkit that adapts CNN-Transformer hybrids to process "chirp" echoes, enabling GPS-denied indoor positioning with <$10 hardware. Achieve centimeter-level accuracy using only commodity ultrasonic sensors and deep learning.
+End-to-end ultrasonic localization toolkit with advanced quantum-inspired task planning capabilities. Combines CNN-Transformer hybrids for echo processing with quantum optimization algorithms for autonomous task scheduling and resource allocation. Achieve centimeter-level positioning accuracy while enabling intelligent multi-agent coordination.
 
 ## Overview
 
@@ -8,6 +8,7 @@ EchoLoc-NN brings bat-inspired echolocation to affordable hardware through deep 
 
 ## Key Features
 
+### Ultrasonic Localization
 - **Centimeter Accuracy**: <5cm error in typical indoor environments
 - **Cheap Hardware**: Works with $10 ultrasonic sensors
 - **Real-time Processing**: 50+ position updates per second
@@ -15,17 +16,31 @@ EchoLoc-NN brings bat-inspired echolocation to affordable hardware through deep 
 - **Multi-path Resilience**: Handles complex reflections
 - **Edge Deployment**: Runs on Raspberry Pi and smartphones
 
+### Quantum-Inspired Task Planning
+- **Quantum Annealing**: Advanced optimization with tunneling effects
+- **Superposition Search**: Parallel exploration of solution spaces
+- **Auto-scaling**: Quantum-aware resource pool management
+- **Position-aware Planning**: Integration with ultrasonic positioning
+- **Multi-objective Optimization**: Balance time, resources, and constraints
+- **Real-time Adaptation**: Dynamic replanning and execution
+
 ## Installation
 
 ```bash
 # Basic installation
 pip install echoloc-nn
 
+# With quantum planning support
+pip install echoloc-nn[quantum,optimization]
+
 # With hardware support
 pip install echoloc-nn[hardware]
 
 # With real-time visualization
 pip install echoloc-nn[viz]
+
+# Full installation with all features
+pip install echoloc-nn[all]
 
 # Development installation
 git clone https://github.com/yourusername/echoloc-nn
@@ -63,6 +78,70 @@ for chirp_response in array.stream_chirps():
     position, confidence = locator.locate(chirp_response)
     print(f"Position: ({position[0]:.2f}, {position[1]:.2f})m, "
           f"Confidence: {confidence:.2%}")
+```
+
+### Quantum-Inspired Task Planning
+
+```python
+from echoloc_nn.quantum_planning import (
+    QuantumTaskPlanner, TaskGraph, Task, TaskType, PlanningStrategy
+)
+
+# Create quantum task planner
+planner = QuantumTaskPlanner()
+
+# Build task graph
+graph = TaskGraph("Robot Navigation Tasks")
+
+# Add tasks with quantum properties
+nav_task = Task(
+    name="Navigate to Position A", 
+    task_type=TaskType.ACTUATOR,
+    estimated_duration=5.0, 
+    priority=3,
+    superposition_weight=1.0,
+    measurement_probability=0.95
+)
+
+scan_task = Task(
+    name="Ultrasonic Area Scan",
+    task_type=TaskType.SENSOR, 
+    estimated_duration=3.0,
+    priority=2
+)
+
+process_task = Task(
+    name="Process Localization Data",
+    task_type=TaskType.COMPUTE,
+    estimated_duration=2.0, 
+    priority=1
+)
+
+graph.add_task(nav_task)
+graph.add_task(scan_task) 
+graph.add_task(process_task)
+
+# Add dependencies
+graph.add_dependency(nav_task.id, scan_task.id)
+graph.add_dependency(scan_task.id, process_task.id)
+
+# Define resources
+resources = {
+    'mobile_robot': {'type': 'actuator', 'position': [0, 0, 0], 'capacity': 1.0},
+    'sensor_array': {'type': 'sensor', 'position': [0, 0, 0], 'capacity': 1.0},
+    'edge_computer': {'type': 'compute', 'cpu_cores': 4, 'capacity': 4.0}
+}
+
+# Execute quantum-inspired optimization
+result = planner.plan_tasks(graph, resources)
+
+print(f"Optimization completed in {result.convergence} iterations")
+print(f"Final energy: {result.energy:.3f}")
+print(f"Execution plan: {len(result.execution_plan)} steps")
+
+for step in result.execution_plan:
+    print(f"  {step['task_name']} -> {step['resource']} "
+          f"(t={step['start_time']:.1f}s, duration={step['duration']:.1f}s)")
 ```
 
 ### Training Custom Model

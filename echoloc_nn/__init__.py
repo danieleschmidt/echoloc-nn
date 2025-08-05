@@ -23,6 +23,12 @@ from .hardware import UltrasonicArray, SensorConfig
 from .signal_processing import ChirpGenerator, EchoProcessor
 from .training import EchoLocTrainer, TrainingConfig, EchoSimulator
 
+# Quantum Planning imports
+from .quantum_planning import (
+    QuantumTaskPlanner, PlanningConfig, TaskGraph, Task, 
+    QuantumOptimizer, PlanningMetrics, EchoLocPlanningBridge
+)
+
 # Quick start functions
 def create_locator(model_path=None, device="auto", **kwargs):
     """
@@ -55,11 +61,78 @@ def create_square_array(spacing=0.1, port=None):
         array.port = port
     return array
 
+def quantum_planning_demo():
+    """
+    Run a quantum-inspired task planning demonstration.
+    
+    Shows integration between EchoLoc positioning and task planning.
+    """
+    import numpy as np
+    from .quantum_planning import QuantumTaskPlanner, TaskGraph, Task, TaskType
+    from .signal_processing import ChirpGenerator
+    
+    print("EchoLoc-NN Quantum Planning Demo")
+    print("================================")
+    
+    # Create components
+    print("1. Creating quantum task planner...")
+    planner = QuantumTaskPlanner()
+    
+    # Create sample task graph
+    print("2. Creating task graph...")
+    graph = TaskGraph("Demo Tasks")
+    
+    # Add sample tasks
+    task1 = Task(name="Navigate to Position A", task_type=TaskType.ACTUATOR, 
+                estimated_duration=5.0, priority=3)
+    task1.parameters = {'target_position': [2.0, 3.0, 0.0], 'requires_movement': True}
+    
+    task2 = Task(name="Ultrasonic Scan", task_type=TaskType.SENSOR,
+                estimated_duration=3.0, priority=2)
+    task2.parameters = {'target_position': [2.0, 3.0, 0.0]}
+    
+    task3 = Task(name="Data Processing", task_type=TaskType.COMPUTE,
+                estimated_duration=2.0, priority=1)
+    
+    graph.add_task(task1)
+    graph.add_task(task2) 
+    graph.add_task(task3)
+    
+    # Add dependencies
+    graph.add_dependency(task1.id, task2.id)  # Navigate before scan
+    graph.add_dependency(task2.id, task3.id)  # Scan before processing
+    
+    # Create resources
+    print("3. Setting up resources...")
+    resources = {
+        'mobile_robot': {'type': 'actuator', 'position': [0, 0, 0]},
+        'ultrasonic_array': {'type': 'sensor', 'position': [0, 0, 0]},
+        'edge_computer': {'type': 'compute', 'cpu_cores': 4}
+    }
+    
+    # Execute quantum planning
+    print("4. Running quantum-inspired optimization...")
+    result = planner.plan_tasks(graph, resources)
+    
+    print(f"5. Results:")
+    print(f"   Optimization energy: {result.energy:.2f}")
+    print(f"   Convergence iterations: {result.convergence}")
+    print(f"   Planning time: {result.optimization_time:.3f}s")
+    print(f"   Tasks in execution plan: {len(result.execution_plan)}")
+    
+    print("\n   Execution sequence:")
+    for i, step in enumerate(result.execution_plan):
+        print(f"   {i+1}. {step['task_name']} -> {step['resource']} "
+              f"(t={step['start_time']:.1f}s, d={step['duration']:.1f}s)")
+    
+    print("\n✓ Quantum planning demo completed!")
+    return result
+
 def quick_demo():
     """
     Run a quick demonstration of the system.
     
-    Shows basic usage with synthetic data.
+    Shows basic usage with synthetic data and quantum planning.
     """
     import numpy as np
     from .signal_processing import ChirpGenerator
@@ -98,7 +171,10 @@ def quick_demo():
     if not stats.get('no_data', False):
         print(f"   Inference time: {stats['avg_inference_time_ms']:.1f} ms")
     
-    print("\n✓ Demo completed successfully!")
+    print("\n5. Running quantum planning demonstration...")
+    planning_result = quantum_planning_demo()
+    
+    print("\n✓ Complete demo finished successfully!")
     print("  See examples/ directory for more detailed usage")
 
 # Make key classes available at package level
@@ -117,7 +193,17 @@ __all__ = [
     "EchoLocTrainer",
     "TrainingConfig",
     "EchoSimulator",
+    # Quantum Planning exports
+    "QuantumTaskPlanner",
+    "PlanningConfig",
+    "TaskGraph",
+    "Task",
+    "QuantumOptimizer",
+    "PlanningMetrics",
+    "EchoLocPlanningBridge",
+    # Demo functions
     "create_locator",
     "create_square_array",
-    "quick_demo"
+    "quick_demo",
+    "quantum_planning_demo"
 ]

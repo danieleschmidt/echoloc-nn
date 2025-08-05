@@ -1,16 +1,71 @@
 """
-Performance monitoring and health checking utilities.
+Enhanced Performance Monitoring and Health Checking for EchoLoc-NN.
+
+Provides comprehensive monitoring, alerting, and health checking
+for quantum planning and ultrasonic localization systems.
 """
 
 import time
 import threading
 import psutil
 import numpy as np
-from typing import Dict, List, Optional, Any, Callable
+from typing import Dict, List, Optional, Any, Callable, Tuple
 from dataclasses import dataclass, field
-from collections import deque
+from collections import deque, defaultdict
+from enum import Enum
+import json
+from datetime import datetime, timedelta
 import torch
 from .logging_config import get_logger
+
+class HealthStatus(Enum):
+    HEALTHY = "healthy"
+    WARNING = "warning"
+    CRITICAL = "critical"
+    UNKNOWN = "unknown"
+
+class AlertLevel(Enum):
+    INFO = "info"
+    WARNING = "warning"
+    ERROR = "error"
+    CRITICAL = "critical"
+
+@dataclass
+class SystemMetrics:
+    """Enhanced system resource metrics snapshot."""
+    timestamp: float
+    cpu_percent: float
+    memory_percent: float
+    memory_available_mb: float
+    disk_usage_percent: float
+    network_bytes_sent: int = 0
+    network_bytes_recv: int = 0
+    gpu_utilization: float = 0.0
+    gpu_memory_percent: float = 0.0
+
+@dataclass
+class QuantumPlanningMetrics:
+    """Quantum planning specific metrics."""
+    timestamp: float
+    planning_time_ms: float
+    optimization_energy: float
+    convergence_iterations: int
+    quantum_coherence: float
+    position_confidence: float
+    success_rate: float
+    throughput_tasks_per_sec: float = 0.0
+
+@dataclass
+class Alert:
+    """System alert notification."""
+    id: str
+    level: AlertLevel
+    component: str
+    message: str
+    timestamp: float
+    metadata: Dict[str, Any] = field(default_factory=dict)
+    resolved: bool = False
+    resolution_time: Optional[float] = None
 
 
 @dataclass
@@ -544,3 +599,161 @@ class HealthChecker:
     def get_health_history(self, limit: int = 10) -> List[Dict[str, Any]]:
         """Get recent health check history."""
         return self.check_history[-limit:] if self.check_history else []
+
+class EnhancedHealthChecker:
+    \"\"\"
+    Enhanced health checker with quantum planning monitoring.
+    
+    Provides comprehensive health checking including:
+    - System resources and performance
+    - Quantum planning metrics
+    - Ultrasonic localization accuracy
+    - Hardware status and connectivity
+    \"\"\"
+    
+    def __init__(self, check_interval: float = 30.0):
+        self.check_interval = check_interval
+        self.logger = get_logger('enhanced_health_checker')
+        
+        # Component registry
+        self.registered_components = {}
+        
+        # Metrics storage
+        self.system_metrics_history = deque(maxlen=1000)
+        self.quantum_metrics_history = deque(maxlen=1000)
+        self.health_status = {}
+        
+        # Alert management
+        self.active_alerts = {}
+        self.alert_history = deque(maxlen=10000)
+        self.alert_callbacks = []
+        
+        # Monitoring
+        self.is_monitoring = False
+        self.monitor_thread = None
+        
+    def register_quantum_component(self, name: str, health_check_func: Callable[[], Tuple[HealthStatus, str]]):
+        \"\"\"Register quantum planning component for health monitoring.\"\"\"
+        self.registered_components[name] = health_check_func
+        self.logger.info(f\"Registered quantum component: {name}\")
+        
+    def record_quantum_metrics(self, 
+                              planning_time_ms: float,
+                              optimization_energy: float = 0.0,
+                              convergence_iterations: int = 0,
+                              quantum_coherence: float = 1.0,
+                              position_confidence: float = 1.0,
+                              success_rate: float = 1.0):
+        \"\"\"Record quantum planning performance metrics.\"\"\"
+        
+        metrics = QuantumPlanningMetrics(
+            timestamp=time.time(),
+            planning_time_ms=planning_time_ms,
+            optimization_energy=optimization_energy,
+            convergence_iterations=convergence_iterations,
+            quantum_coherence=quantum_coherence,
+            position_confidence=position_confidence,
+            success_rate=success_rate
+        )
+        
+        self.quantum_metrics_history.append(metrics)
+        
+        # Check quantum-specific thresholds
+        self._check_quantum_thresholds(metrics)
+        
+    def get_quantum_health_summary(self) -> Dict[str, Any]:
+        \"\"\"Get quantum planning health summary.\"\"\"
+        if not self.quantum_metrics_history:
+            return {'no_data': True}
+            
+        recent_metrics = list(self.quantum_metrics_history)[-20:]  # Last 20 measurements
+        
+        return {
+            'avg_planning_time_ms': np.mean([m.planning_time_ms for m in recent_metrics]),
+            'avg_quantum_coherence': np.mean([m.quantum_coherence for m in recent_metrics]),
+            'avg_position_confidence': np.mean([m.position_confidence for m in recent_metrics]),
+            'avg_success_rate': np.mean([m.success_rate for m in recent_metrics]),
+            'samples': len(recent_metrics)
+        }
+        
+    def _check_quantum_thresholds(self, metrics: QuantumPlanningMetrics):
+        \"\"\"Check quantum planning metrics against thresholds.\"\"\"
+        
+        # Planning time thresholds
+        if metrics.planning_time_ms > 10000:  # 10 seconds
+            self._create_alert(
+                AlertLevel.CRITICAL, 'quantum_planning',
+                f\"Planning time critical: {metrics.planning_time_ms:.0f}ms\"
+            )
+        elif metrics.planning_time_ms > 5000:  # 5 seconds
+            self._create_alert(
+                AlertLevel.WARNING, 'quantum_planning',
+                f\"Planning time high: {metrics.planning_time_ms:.0f}ms\"
+            )
+            
+        # Quantum coherence thresholds
+        if metrics.quantum_coherence < 0.1:
+            self._create_alert(
+                AlertLevel.CRITICAL, 'quantum_coherence',
+                f\"Quantum coherence critical: {metrics.quantum_coherence:.3f}\"
+            )
+        elif metrics.quantum_coherence < 0.3:
+            self._create_alert(
+                AlertLevel.WARNING, 'quantum_coherence',
+                f\"Quantum coherence low: {metrics.quantum_coherence:.3f}\"
+            )
+            
+        # Position confidence thresholds
+        if metrics.position_confidence < 0.5:
+            self._create_alert(
+                AlertLevel.CRITICAL, 'position_confidence',
+                f\"Position confidence critical: {metrics.position_confidence:.3f}\"
+            )
+        elif metrics.position_confidence < 0.7:
+            self._create_alert(
+                AlertLevel.WARNING, 'position_confidence',
+                f\"Position confidence low: {metrics.position_confidence:.3f}\"
+            )
+            
+    def _create_alert(self, level: AlertLevel, component: str, message: str, metadata: Optional[Dict] = None):
+        \"\"\"Create and manage alert.\"\"\"
+        
+        alert_id = f\"{component}_{level.value}_{int(time.time())}\"
+        
+        # Check for duplicate alert
+        existing_alerts = [a for a in self.active_alerts.values() 
+                         if a.component == component and a.level == level]
+        
+        if existing_alerts:
+            existing_alerts[0].timestamp = time.time()
+            return
+            
+        alert = Alert(
+            id=alert_id,
+            level=level,
+            component=component,
+            message=message,
+            timestamp=time.time(),
+            metadata=metadata or {}
+        )
+        
+        self.active_alerts[alert_id] = alert
+        self.alert_history.append(alert)
+        
+        # Notify callbacks
+        for callback in self.alert_callbacks:
+            try:
+                callback(alert)
+            except Exception as e:
+                self.logger.error(f\"Alert callback failed: {e}\")
+                
+        # Log alert
+        log_level = getattr(self.logger, level.value.lower(), self.logger.info)
+        log_level(f\"[{component.upper()}] {message}\")
+
+# Global enhanced health checker
+_global_enhanced_health_checker = EnhancedHealthChecker()
+
+def get_global_enhanced_health_checker() -> EnhancedHealthChecker:
+    \"\"\"Get the global enhanced health checker instance.\"\"\"
+    return _global_enhanced_health_checker
