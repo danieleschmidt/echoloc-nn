@@ -1,5 +1,8 @@
 """
-Auto-scaling system for dynamic resource management.
+Enhanced Auto-Scaling with Quantum Planning Integration
+
+Extends the existing auto-scaler with quantum-aware scaling decisions
+and intelligent resource prediction for optimal performance.
 """
 
 import time
@@ -559,3 +562,125 @@ class AutoScaler:
             # Notify callbacks
             for callback in self.scaling_callbacks:
                 callback(event)
+
+# Enhanced quantum-aware components
+class QuantumAwareAutoScaler(AutoScaler):
+    """
+    Quantum-aware auto-scaler that considers quantum planning metrics.
+    
+    Extends the base AutoScaler with quantum-specific metrics and scaling decisions.
+    """
+    
+    def __init__(self, config: ScalingConfig, processor_pool=None, 
+                 planning_metrics=None, scaling_callbacks=None):
+        super().__init__(config, processor_pool, scaling_callbacks)
+        self.planning_metrics = planning_metrics
+        
+        # Quantum-specific thresholds
+        self.quantum_thresholds = {
+            'planning_time_ms': 5000.0,
+            'coherence_warning': 0.3,
+            'coherence_critical': 0.1,
+            'confidence_warning': 0.7
+        }
+        
+        # Enhanced monitoring
+        self.quantum_history = deque(maxlen=20)
+        
+    def _evaluate_scaling(self):
+        """Enhanced scaling evaluation with quantum metrics."""
+        # Call parent evaluation first
+        super()._evaluate_scaling()
+        
+        # Add quantum-specific evaluation
+        if self.planning_metrics:
+            self._evaluate_quantum_scaling()
+    
+    def _evaluate_quantum_scaling(self):
+        """Evaluate scaling based on quantum planning performance."""
+        try:
+            # Get quantum planning metrics
+            planning_perf = self.planning_metrics.get_planning_performance()
+            quantum_metrics = self.planning_metrics.get_quantum_metrics()
+            
+            if planning_perf.get('no_data') or quantum_metrics.get('no_data'):
+                return
+                
+            # Check planning time performance
+            avg_planning_time = planning_perf.get('avg_planning_time', 0.0)
+            if avg_planning_time > self.quantum_thresholds['planning_time_ms']:
+                self._quantum_scale_up('planning_time', avg_planning_time)
+                return
+                
+            # Check quantum coherence
+            avg_coherence = quantum_metrics.get('avg_quantum_coherence', 1.0)
+            if avg_coherence < self.quantum_thresholds['coherence_critical']:
+                self._quantum_scale_up('coherence', avg_coherence)
+                return
+                
+            # Record quantum metrics for trending
+            self.quantum_history.append({
+                'timestamp': time.time(),
+                'planning_time': avg_planning_time,
+                'coherence': avg_coherence,
+                'quantum_advantage': quantum_metrics.get('quantum_advantage_score', 0.5)
+            })
+            
+        except Exception as e:
+            self.logger.error(f"Error in quantum scaling evaluation: {e}")
+    
+    def _quantum_scale_up(self, metric: str, value: float):
+        """Perform quantum-aware scale up."""
+        if self.current_workers >= self.config.max_workers:
+            return
+            
+        old_workers = self.current_workers
+        new_workers = min(old_workers + 1, self.config.max_workers)
+        
+        self.logger.info(f"Quantum scaling up: {metric}={value:.3f}")
+        
+        success = self._apply_scaling(new_workers)
+        if success:
+            event = ScalingEvent(
+                timestamp=time.time(),
+                event_type='quantum_scale_up',
+                old_workers=old_workers,
+                new_workers=new_workers,
+                trigger_metric=metric,
+                trigger_value=value,
+                reason=f"Quantum {metric} threshold exceeded"
+            )
+            
+            self.scaling_history.append(event)
+            self.current_workers = new_workers
+            self.last_scaling_time = time.time()
+    
+    def get_quantum_scaling_stats(self) -> Dict[str, Any]:
+        """Get quantum-specific scaling statistics."""
+        stats = self.get_scaling_stats()
+        
+        if self.quantum_history:
+            recent_quantum = list(self.quantum_history)[-5:]
+            stats['quantum_metrics'] = {
+                'avg_planning_time': np.mean([q['planning_time'] for q in recent_quantum]),
+                'avg_coherence': np.mean([q['coherence'] for q in recent_quantum]),
+                'avg_quantum_advantage': np.mean([q['quantum_advantage'] for q in recent_quantum])
+            }
+        
+        quantum_events = [e for e in self.scaling_history if 'quantum' in e.event_type]
+        stats['quantum_scaling_events'] = len(quantum_events)
+        
+        return stats
+
+# Global enhanced auto-scaler
+_global_quantum_auto_scaler = None
+
+def get_global_quantum_auto_scaler(config=None, processor_pool=None, 
+                                  planning_metrics=None) -> QuantumAwareAutoScaler:
+    """Get or create global quantum-aware auto-scaler."""
+    global _global_quantum_auto_scaler
+    if _global_quantum_auto_scaler is None and config:
+        _global_quantum_auto_scaler = QuantumAwareAutoScaler(
+            config, processor_pool, planning_metrics
+        )
+    return _global_quantum_auto_scaler

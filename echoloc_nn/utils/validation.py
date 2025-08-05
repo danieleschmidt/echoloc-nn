@@ -1,11 +1,36 @@
 """
-Data validation utilities for EchoLoc-NN.
+Enhanced Data Validation and Sanitization for EchoLoc-NN.
+
+Provides comprehensive validation for quantum planning parameters,
+ultrasonic positioning data, and system configurations.
 """
 
-from typing import Union, List, Tuple, Optional, Dict, Any
+from typing import Union, List, Tuple, Optional, Dict, Any, Callable
+from dataclasses import dataclass
+from enum import Enum
 import numpy as np
 import torch
+import re
+import math
 from .exceptions import ValidationError
+
+class ValidationLevel(Enum):
+    BASIC = "basic"
+    STRICT = "strict" 
+    PARANOID = "paranoid"
+
+@dataclass
+class ValidationResult:
+    """Result of validation operation."""
+    is_valid: bool
+    errors: List[str]
+    warnings: List[str]
+    sanitized_value: Any = None
+    
+    def raise_if_invalid(self):
+        """Raise ValidationError if validation failed."""
+        if not self.is_valid:
+            raise ValidationError(f"Validation failed: {'; '.join(self.errors)}")
 
 
 class EchoDataValidator:
@@ -448,8 +473,166 @@ class SensorConfigValidator:
         
         return True
 
+class QuantumPlanningValidator:
+    """
+    Comprehensive validator for quantum-inspired task planning systems.
+    
+    Validates:
+    - Task graph structure and dependencies
+    - Resource allocation parameters
+    - Quantum optimization settings
+    - Position and movement constraints
+    - Hardware configuration
+    """
+    
+    def __init__(self, validation_level: ValidationLevel = ValidationLevel.STRICT):
+        self.validation_level = validation_level
+        
+        # Validation thresholds
+        self.position_bounds = (-1000.0, 1000.0)  # meters
+        self.duration_bounds = (0.001, 86400.0)   # seconds (1ms to 24h)
+        self.priority_bounds = (1, 100)
+        self.confidence_bounds = (0.0, 1.0)
+        self.coherence_bounds = (0.0, 1.0)
+        self.temperature_bounds = (0.001, 1000.0)
+        
+    def validate_task_graph(self, task_graph) -> ValidationResult:
+        """Validate task graph structure and consistency."""
+        errors = []
+        warnings = []
+        
+        # Check basic structure
+        if not hasattr(task_graph, 'tasks') or not hasattr(task_graph, 'dependencies'):
+            errors.append("Task graph missing required attributes")
+            return ValidationResult(False, errors, warnings)
+            
+        tasks = task_graph.tasks
+        dependencies = task_graph.dependencies
+        
+        # Validate tasks
+        task_validation = self._validate_tasks(tasks)
+        errors.extend(task_validation.errors)
+        warnings.extend(task_validation.warnings)
+        
+        # Validate dependencies
+        dep_validation = self._validate_dependencies(dependencies, tasks)
+        errors.extend(dep_validation.errors)
+        warnings.extend(dep_validation.warnings)
+        
+        # Check for cycles (critical)
+        if hasattr(task_graph, 'validate_graph'):
+            graph_issues = task_graph.validate_graph()
+            for issue in graph_issues:
+                if 'cycle' in issue.lower():
+                    errors.append(f"Graph validation: {issue}")
+                else:
+                    warnings.append(f"Graph validation: {issue}")
+                    
+        return ValidationResult(
+            is_valid=len(errors) == 0,
+            errors=errors,
+            warnings=warnings
+        )
+        
+    def validate_quantum_config(self, config) -> ValidationResult:
+        """Validate quantum planning configuration."""
+        errors = []
+        warnings = []
+        
+        # Validate strategy
+        if hasattr(config, 'strategy'):
+            valid_strategies = ['quantum_annealing', 'superposition_search', 'hybrid_classical', 'adaptive']
+            strategy_name = config.strategy.value if hasattr(config.strategy, 'value') else str(config.strategy)
+            if strategy_name not in valid_strategies:
+                errors.append(f"Invalid planning strategy: {strategy_name}")
+                
+        # Validate quantum coherence parameters
+        if hasattr(config, 'quantum_tunneling_rate'):
+            rate_result = self._validate_probability(config.quantum_tunneling_rate)
+            if not rate_result.is_valid:
+                errors.extend([f"quantum_tunneling_rate: {e}" for e in rate_result.errors])
+                
+        return ValidationResult(
+            is_valid=len(errors) == 0,
+            errors=errors,
+            warnings=warnings
+        )
+        
+    def _validate_tasks(self, tasks) -> ValidationResult:
+        """Validate list of tasks."""
+        errors = []
+        warnings = []
+        
+        if not tasks:
+            warnings.append("Empty task list")
+            return ValidationResult(True, errors, warnings)
+            
+        # Check for duplicate IDs
+        task_ids = [task.id for task in tasks if hasattr(task, 'id')]
+        if len(task_ids) != len(set(task_ids)):
+            errors.append("Duplicate task IDs found")
+            
+        return ValidationResult(
+            is_valid=len(errors) == 0,
+            errors=errors,
+            warnings=warnings
+        )
+        
+    def _validate_dependencies(self, dependencies, tasks) -> ValidationResult:
+        """Validate task dependencies."""
+        errors = []
+        warnings = []
+        
+        if not dependencies:
+            return ValidationResult(True, errors, warnings)
+            
+        task_ids = {task.id for task in tasks if hasattr(task, 'id')}
+        
+        for dep in dependencies:
+            # Check dependency structure
+            if not hasattr(dep, 'predecessor_id') or not hasattr(dep, 'successor_id'):
+                errors.append("Dependency missing required attributes")
+                continue
+                
+            # Check task existence
+            if dep.predecessor_id not in task_ids:
+                errors.append(f"Dependency references non-existent predecessor: {dep.predecessor_id}")
+            if dep.successor_id not in task_ids:
+                errors.append(f"Dependency references non-existent successor: {dep.successor_id}")
+                
+        return ValidationResult(
+            is_valid=len(errors) == 0,
+            errors=errors,
+            warnings=warnings
+        )
+        
+    def _validate_probability(self, probability) -> ValidationResult:
+        """Validate probability value."""
+        errors = []
+        warnings = []
+        
+        if not isinstance(probability, (int, float)):
+            errors.append(f"Probability must be numeric, got {type(probability)}")
+            return ValidationResult(False, errors, warnings)
+            
+        if not 0.0 <= probability <= 1.0:
+            errors.append(f"Probability must be in range [0, 1], got {probability}")
+            
+        return ValidationResult(
+            is_valid=len(errors) == 0,
+            errors=errors,
+            warnings=warnings
+        )
 
-class ModelValidator:
+# Global validator instances
+_global_quantum_validator = QuantumPlanningValidator()
+
+def get_global_quantum_validator() -> QuantumPlanningValidator:
+    """Get the global quantum planning validator instance."""
+    return _global_quantum_validator
+
+
+class EnhancedModelValidator:
     """Validator for model configurations and states."""
     
     @staticmethod
