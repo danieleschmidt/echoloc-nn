@@ -6,14 +6,22 @@ from typing import Tuple, Optional, Dict, Any, List
 from dataclasses import dataclass
 import time
 import numpy as np
-import torch
+try:
+    import torch
+    TORCH_AVAILABLE = True
+except ImportError:
+    TORCH_AVAILABLE = False
 import threading
 from queue import Queue, Empty
 import logging
 
-from ..models.base import EchoLocBaseModel
-from ..models.hybrid_architecture import EchoLocModel
-from ..signal_processing.preprocessing import PreProcessor
+try:
+    from ..models.base import EchoLocBaseModel
+    from ..models.hybrid_architecture import EchoLocModel
+except ImportError:
+    from ..models.simple_models import SimpleEchoLocModel as EchoLocModel
+    EchoLocBaseModel = EchoLocModel
+from ..signal_processing import PreProcessor
 from ..hardware.ultrasonic_array import UltrasonicArray
 
 
@@ -72,10 +80,13 @@ class EchoLocator:
         self.config = config or InferenceConfig()
         
         # Set device
-        if self.config.device == "auto":
-            self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        if TORCH_AVAILABLE:
+            if self.config.device == "auto":
+                self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+            else:
+                self.device = torch.device(self.config.device)
         else:
-            self.device = torch.device(self.config.device)
+            self.device = "cpu"
         
         # Load model
         if model is not None:
@@ -85,9 +96,11 @@ class EchoLocator:
         else:
             # Default model for demo
             self.model = EchoLocModel(n_sensors=4, model_size="base")
-            
-        self.model.to(self.device)
-        self.model.eval()
+        
+        if TORCH_AVAILABLE and hasattr(self.model, 'to'):
+            self.model.to(self.device)
+        if hasattr(self.model, 'eval'):
+            self.model.eval()
         
         # Initialize components
         self.preprocessor = PreProcessor()
@@ -108,17 +121,25 @@ class EchoLocator:
         self.logger.info(f"EchoLocator initialized on {self.device}")
         self.logger.info(f"Model: {self.model.__class__.__name__}")
         
-    def _load_model(self, model_path: str) -> EchoLocBaseModel:
+    def _load_model(self, model_path: str):
         """Load model from checkpoint."""
         try:
             if hasattr(EchoLocModel, 'load_model'):
-                return EchoLocModel.load_model(model_path, str(self.device))
+                device_str = str(self.device) if TORCH_AVAILABLE else 'cpu'
+                return EchoLocModel.load_model(model_path, device_str)
             else:
                 # Fallback loading
-                checkpoint = torch.load(model_path, map_location=self.device)
-                model = EchoLocModel()
-                model.load_state_dict(checkpoint['state_dict'])
-                return model
+                if TORCH_AVAILABLE:
+                    checkpoint = torch.load(model_path, map_location=self.device)
+                    model = EchoLocModel()
+                    model.load_state_dict(checkpoint['state_dict'])
+                    return model
+                else:
+                    # Simple pickle loading
+                    import pickle
+                    with open(model_path, 'rb') as f:
+                        model_data = pickle.load(f)
+                    return EchoLocModel.load_model(model_path)
         except Exception as e:
             self.logger.warning(f"Failed to load model from {model_path}: {e}")
             self.logger.info("Using default model")
