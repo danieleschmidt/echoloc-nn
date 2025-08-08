@@ -105,8 +105,7 @@ class TestUltrasonicArray:
         # Mock serial connection
         mock_conn = MagicMock()
         mock_serial.return_value = mock_conn
-        mock_conn.readline.return_value = b'PONG\
-'
+        mock_conn.readline.return_value = b'PONG\\n'
         
         array = UltrasonicArray.create_square_array()
         
@@ -135,8 +134,7 @@ class TestUltrasonicArray:
         # Mock serial connection but wrong ping response
         mock_conn = MagicMock()
         mock_serial.return_value = mock_conn
-        mock_conn.readline.return_value = b'WRONG_RESPONSE\
-'
+        mock_conn.readline.return_value = b'WRONG_RESPONSE\\n'
         
         array = UltrasonicArray.create_square_array()
         
@@ -151,15 +149,13 @@ class TestUltrasonicArray:
         # Setup mock
         mock_conn = MagicMock()
         mock_serial.return_value = mock_conn
-        mock_conn.readline.return_value = b'PONG\
-'  # For connection test
+        mock_conn.readline.return_value = b'PONG\\n'  # For connection test
         
         array = UltrasonicArray.create_square_array()
         array.connect('/dev/ttyUSB0')
         
         # Mock successful transmission
-        mock_conn.readline.return_value = b'TX_OK\
-'
+        mock_conn.readline.return_value = b'TX_OK\\n'
         
         chirp_data = np.sin(2 * np.pi * 40000 * np.linspace(0, 0.005, 1250))
         
@@ -174,8 +170,7 @@ class TestUltrasonicArray:
         # Setup mock
         mock_conn = MagicMock()
         mock_serial.return_value = mock_conn
-        mock_conn.readline.return_value = b'PONG\
-'  # For connection test
+        mock_conn.readline.return_value = b'PONG\\n'  # For connection test
         
         array = UltrasonicArray.create_square_array()
         array.connect('/dev/ttyUSB0')
@@ -258,8 +253,7 @@ class TestUltrasonicArray:
         # Setup mock connection
         mock_conn = MagicMock()
         mock_serial.return_value = mock_conn
-        mock_conn.readline.return_value = b'PONG\
-'
+        mock_conn.readline.return_value = b'PONG\\n'
         
         array = UltrasonicArray.create_square_array()
         array.connect('/dev/ttyUSB0')
@@ -268,8 +262,7 @@ class TestUltrasonicArray:
         n_samples = int(0.1 * array.sample_rate)
         fake_data = (np.random.randn(array.n_sensors * n_samples) * 1000).astype(np.int16)
         mock_conn.read.return_value = fake_data.tobytes()
-        mock_conn.readline.side_effect = [b'TX_OK\
-'] * 10  # For chirp transmissions
+        mock_conn.readline.side_effect = [b'TX_OK\\n'] * 10  # For chirp transmissions
         
         success = array.calibrate(method="auto")
         
@@ -294,8 +287,7 @@ class TestArduinoInterface:
         # Mock serial connection
         mock_conn = MagicMock()
         mock_serial.return_value = mock_conn
-        mock_conn.readline.return_value = b'PONG\
-'
+        mock_conn.readline.return_value = b'PONG\\n'
         
         interface = ArduinoInterface('/dev/ttyUSB0')
         
@@ -310,8 +302,7 @@ class TestArduinoInterface:
         # Mock serial connection
         mock_conn = MagicMock()
         mock_serial.return_value = mock_conn
-        mock_conn.readline.return_value = b'PONG\
-'
+        mock_conn.readline.return_value = b'PONG\\n'
         
         interface = ArduinoInterface('/dev/ttyUSB0')
         interface.connect()
@@ -328,8 +319,7 @@ class TestArduinoInterface:
         # Mock serial connection
         mock_conn = MagicMock()
         mock_serial.return_value = mock_conn
-        mock_conn.readline.return_value = b'PONG\
-'
+        mock_conn.readline.return_value = b'PONG\\n'
         
         interface = ArduinoInterface('/dev/ttyUSB0')
         interface.connect()
@@ -359,8 +349,7 @@ class TestArduinoInterface:
         # Mock serial connection
         mock_conn = MagicMock()
         mock_serial.return_value = mock_conn
-        mock_conn.readline.return_value = b'PONG\
-'
+        mock_conn.readline.return_value = b'PONG\\n'
         
         interface = ArduinoInterface('/dev/ttyUSB0')
         interface.connect()
@@ -381,8 +370,7 @@ class TestArduinoInterface:
         # Mock serial connection
         mock_conn = MagicMock()
         mock_serial.return_value = mock_conn
-        mock_conn.readline.return_value = b'PONG\
-'
+        mock_conn.readline.return_value = b'PONG\\n'
         
         interface = ArduinoInterface('/dev/ttyUSB0')
         interface.connect()
@@ -408,8 +396,7 @@ class TestArduinoInterface:
         # Mock serial connection
         mock_conn = MagicMock()
         mock_serial.return_value = mock_conn
-        mock_conn.readline.return_value = b'PONG\
-'
+        mock_conn.readline.return_value = b'PONG\\n'
         
         interface = ArduinoInterface('/dev/ttyUSB0')
         interface.connect()
@@ -513,8 +500,7 @@ class TestHardwareEdgeCases:
         # Mock serial connection
         mock_conn = MagicMock()
         mock_serial.return_value = mock_conn
-        mock_conn.readline.return_value = b'PONG\
-'
+        mock_conn.readline.return_value = b'PONG\\n'
         
         array = UltrasonicArray.create_square_array()
         array.connect('/dev/ttyUSB0')
