@@ -17,7 +17,12 @@ __author__ = "Daniel Schmidt"
 __email__ = "daniel@example.com"
 
 # Core imports for user convenience
-from .models import EchoLocModel, CNNTransformerHybrid
+try:
+    from .models import EchoLocModel, CNNTransformerHybrid
+except ImportError:
+    # Models not available, provide fallback
+    EchoLocModel = None
+    CNNTransformerHybrid = None
 from .inference import EchoLocator, InferenceConfig
 from .hardware import UltrasonicArray, SensorConfig
 from .signal_processing import ChirpGenerator, EchoProcessor
