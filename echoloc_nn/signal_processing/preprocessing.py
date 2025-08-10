@@ -2,10 +2,15 @@
 Signal preprocessing utilities.
 """
 
-from typing import Tuple, Optional, List, Dict, Any
+from typing import Tuple, Optional, List, Dict, Any, Union
 import numpy as np
 import scipy.signal as signal
 from scipy.stats import zscore
+import torch
+import torch.nn.functional as F
+from concurrent.futures import ThreadPoolExecutor
+import threading
+from ..utils.logging_config import get_logger
 
 
 class PreProcessor:
@@ -16,8 +21,58 @@ class PreProcessor:
     normalization, and feature preparation for ML models.
     """
     
-    def __init__(self, sample_rate: int = 250000):
+    def __init__(self, sample_rate: int = 250000, device: str = "auto", enable_gpu: bool = True):
         self.sample_rate = sample_rate
+        self.logger = get_logger('preprocessor')
+        
+        # GPU acceleration setup
+        self.enable_gpu = enable_gpu and torch.cuda.is_available()
+        if device == "auto":
+            self.device = torch.device("cuda" if self.enable_gpu else "cpu")
+        else:
+            self.device = torch.device(device)
+            self.enable_gpu = self.device.type == "cuda"
+        
+        # Parallel processing setup
+        self.num_workers = min(4, torch.get_num_threads())
+        self.thread_pool = ThreadPoolExecutor(max_workers=self.num_workers)
+        
+        # Cache for filter coefficients
+        self.filter_cache = {}
+        self.cache_lock = threading.Lock()
+        
+        if self.enable_gpu:
+            self.logger.info(f"GPU acceleration enabled on {self.device}")
+            # Warm up GPU
+            self._warmup_gpu()
+        else:
+            self.logger.info("Using CPU processing")
+    
+    def _warmup_gpu(self):
+        """Warm up GPU for optimal performance."""
+        try:
+            # Create small test tensor and perform operations
+            test_data = torch.randn(4, 1024, device=self.device)
+            _ = torch.fft.fft(test_data)
+            _ = F.conv1d(test_data.unsqueeze(1), torch.randn(1, 1, 32, device=self.device), padding=16)
+            torch.cuda.synchronize() if self.enable_gpu else None
+            self.logger.debug("GPU warmup completed")
+        except Exception as e:
+            self.logger.warning(f"GPU warmup failed: {e}")
+            self.enable_gpu = False
+            self.device = torch.device("cpu")
+    
+    def _to_torch(self, data: np.ndarray) -> torch.Tensor:
+        """Convert numpy array to torch tensor on appropriate device."""
+        if isinstance(data, torch.Tensor):
+            return data.to(self.device)
+        return torch.from_numpy(data.astype(np.float32)).to(self.device)
+    
+    def _to_numpy(self, data: torch.Tensor) -> np.ndarray:
+        """Convert torch tensor back to numpy array."""
+        if isinstance(data, np.ndarray):
+            return data
+        return data.cpu().numpy()
         
     def bandpass_filter(
         self,

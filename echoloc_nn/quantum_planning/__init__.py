@@ -12,9 +12,10 @@ Key Components:
 """
 
 from .planner import QuantumTaskPlanner, PlanningConfig
-from .task_graph import TaskGraph, Task, TaskDependency
+from .task_graph import TaskGraph, Task, TaskDependency, TaskType
 from .optimizer import QuantumOptimizer, AnnealingSchedule
-from .metrics import PlanningMetrics, OptimizationResults
+from .metrics import PlanningMetrics
+from .optimizer import OptimizationResults
 from .integration import EchoLocPlanningBridge
 
 __all__ = [
@@ -23,6 +24,7 @@ __all__ = [
     'TaskGraph',
     'Task',
     'TaskDependency',
+    'TaskType',
     'QuantumOptimizer',
     'AnnealingSchedule',
     'PlanningMetrics',

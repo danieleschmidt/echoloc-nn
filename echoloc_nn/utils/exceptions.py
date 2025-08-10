@@ -60,3 +60,8 @@ class ResourceError(EchoLocError):
 class SecurityError(EchoLocError):
     """Security-related errors."""
     pass
+
+
+class OptimizationError(EchoLocError):
+    """Optimization-related errors."""
+    pass
