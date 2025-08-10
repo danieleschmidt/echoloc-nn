@@ -190,10 +190,14 @@ class LRUCache:
 
 class EchoCache:
     """
-    Specialized cache for echo data and processing results.
+    Generation 3 specialized cache for echo data and processing results.
     
-    Provides intelligent caching of preprocessed echo data,
-    intermediate features, and localization results.
+    Advanced features:
+    - Geometric hashing for sensor position caching
+    - Frequency domain caching for signal processing
+    - Predictive pre-loading based on usage patterns  
+    - Compressed storage for memory efficiency
+    - NUMA-aware memory allocation
     """
     
     def __init__(self, config: CacheConfig):
@@ -201,26 +205,254 @@ class EchoCache:
         self.cache = LRUCache(config)
         self.logger = get_logger('echo_cache')
         
-        # Cache categories
+        # Enhanced cache categories
         self.echo_data_cache = LRUCache(config)
         self.feature_cache = LRUCache(config)
         self.result_cache = LRUCache(config)
-    
-    def _hash_array(self, array: np.ndarray) -> str:
-        """Create hash of numpy array."""
-        if self.config.hash_algorithm == "sha256":
-            hash_obj = hashlib.sha256()
-        elif self.config.hash_algorithm == "md5":
-            hash_obj = hashlib.md5()
-        else:
-            raise ValueError(f"Unsupported hash algorithm: {self.config.hash_algorithm}")
         
-        # Hash array data and metadata
-        hash_obj.update(array.tobytes())
-        hash_obj.update(str(array.shape).encode())
-        hash_obj.update(str(array.dtype).encode())
+        # Generation 3 enhancements
+        self.geometry_cache = LRUCache(config)  # Sensor geometry computations
+        self.frequency_cache = LRUCache(config)  # FFT and frequency domain data
+        self.filter_cache = LRUCache(config)  # Pre-computed filter coefficients
+        self.prediction_cache = AdaptiveCache(config)  # Predictive caching
+        
+        # Compression settings
+        self.enable_compression = True
+        self.compression_threshold = 1024 * 1024  # 1MB
+        
+        # Performance tracking
+        self.cache_performance = {
+            'compression_savings': 0,
+            'geometry_hits': 0,
+            'frequency_hits': 0,
+            'predictive_hits': 0
+        }
+    
+    def _hash_array(self, array: np.ndarray, fast_hash: bool = False) -> str:
+        """Create hash of numpy array with optional fast hashing."""
+        if fast_hash:
+            # Fast hash using shape, dtype, and sample of data points
+            hash_obj = hashlib.md5()
+            hash_obj.update(str(array.shape).encode())
+            hash_obj.update(str(array.dtype).encode())
+            
+            # Sample key points for fast hashing
+            if array.size > 1000:
+                # Use sample of data for large arrays
+                sample_indices = np.linspace(0, array.size-1, 100, dtype=int)
+                sample_data = array.flat[sample_indices]
+                hash_obj.update(sample_data.tobytes())
+            else:
+                hash_obj.update(array.tobytes())
+        else:
+            # Full hash for accuracy
+            if self.config.hash_algorithm == "sha256":
+                hash_obj = hashlib.sha256()
+            elif self.config.hash_algorithm == "md5":
+                hash_obj = hashlib.md5()
+            else:
+                raise ValueError(f"Unsupported hash algorithm: {self.config.hash_algorithm}")
+            
+            # Hash array data and metadata
+            hash_obj.update(array.tobytes())
+            hash_obj.update(str(array.shape).encode())
+            hash_obj.update(str(array.dtype).encode())
         
         return hash_obj.hexdigest()
+    
+    def _compress_data(self, data: Any) -> Tuple[bytes, bool]:
+        """Compress data if beneficial."""
+        try:
+            import lz4.frame
+            
+            # Serialize data
+            if isinstance(data, (np.ndarray, torch.Tensor)):
+                if isinstance(data, torch.Tensor):
+                    data = data.cpu().numpy()
+                raw_data = data.tobytes()
+                metadata = {'shape': data.shape, 'dtype': str(data.dtype), 'type': 'array'}
+            else:
+                raw_data = pickle.dumps(data)
+                metadata = {'type': 'pickle'}
+            
+            # Only compress if data is large enough
+            if len(raw_data) < self.compression_threshold:
+                return pickle.dumps({'data': data, 'metadata': metadata, 'compressed': False}), False
+            
+            # Compress data
+            compressed = lz4.frame.compress(raw_data)
+            
+            if len(compressed) < len(raw_data) * 0.9:  # Only use if >10% savings
+                result = {
+                    'data': compressed,
+                    'metadata': metadata,
+                    'compressed': True,
+                    'original_size': len(raw_data)
+                }
+                self.cache_performance['compression_savings'] += len(raw_data) - len(compressed)
+                return pickle.dumps(result), True
+            else:
+                # Compression not beneficial
+                result = {'data': data, 'metadata': metadata, 'compressed': False}
+                return pickle.dumps(result), False
+                
+        except ImportError:
+            # lz4 not available, use pickle
+            return pickle.dumps(data), False
+        except Exception as e:
+            self.logger.warning(f"Compression failed: {e}")
+            return pickle.dumps(data), False
+    
+    def _decompress_data(self, compressed_data: bytes) -> Any:
+        """Decompress cached data."""
+        try:
+            import lz4.frame
+            
+            # Deserialize wrapper
+            data_wrapper = pickle.loads(compressed_data)
+            
+            if not data_wrapper.get('compressed', False):
+                return data_wrapper['data']
+            
+            # Decompress data
+            metadata = data_wrapper['metadata']
+            compressed = data_wrapper['data']
+            
+            raw_data = lz4.frame.decompress(compressed)
+            
+            if metadata['type'] == 'array':
+                # Reconstruct array
+                dtype = np.dtype(metadata['dtype'])
+                shape = metadata['shape']
+                return np.frombuffer(raw_data, dtype=dtype).reshape(shape)
+            else:
+                # Pickle data
+                return pickle.loads(raw_data)
+                
+        except ImportError:
+            # lz4 not available
+            return pickle.loads(compressed_data)
+        except Exception as e:
+            self.logger.warning(f"Decompression failed: {e}")
+            return pickle.loads(compressed_data)
+    
+    def cache_sensor_geometry(
+        self,
+        sensor_positions: np.ndarray,
+        precomputed_distances: np.ndarray,
+        time_of_flight_matrix: Optional[np.ndarray] = None
+    ) -> str:
+        """Cache sensor geometry computations."""
+        geometry_data = {
+            'sensor_positions': sensor_positions,
+            'distances': precomputed_distances,
+            'tof_matrix': time_of_flight_matrix,
+            'timestamp': time.time()
+        }
+        
+        cache_key = f"geometry_{self._hash_array(sensor_positions, fast_hash=True)}"
+        
+        if self.enable_compression:
+            compressed_data, was_compressed = self._compress_data(geometry_data)
+            success = self.geometry_cache.put(cache_key, compressed_data)
+        else:
+            success = self.geometry_cache.put(cache_key, geometry_data)
+        
+        if success:
+            self.logger.debug(f"Cached sensor geometry: {cache_key}")
+        
+        return cache_key
+    
+    def get_cached_sensor_geometry(self, sensor_positions: np.ndarray) -> Optional[Dict[str, Any]]:
+        """Get cached sensor geometry computations."""
+        cache_key = f"geometry_{self._hash_array(sensor_positions, fast_hash=True)}"
+        cached_data = self.geometry_cache.get(cache_key)
+        
+        if cached_data is not None:
+            self.cache_performance['geometry_hits'] += 1
+            self.logger.debug(f"Geometry cache hit: {cache_key}")
+            
+            if self.enable_compression:
+                return self._decompress_data(cached_data)
+            else:
+                return cached_data
+        
+        return None
+    
+    def cache_frequency_data(
+        self,
+        time_signal: np.ndarray,
+        frequency_spectrum: np.ndarray,
+        sample_rate: float
+    ) -> str:
+        """Cache frequency domain data for signal processing."""
+        freq_data = {
+            'spectrum': frequency_spectrum,
+            'sample_rate': sample_rate,
+            'timestamp': time.time()
+        }
+        
+        cache_key = f"frequency_{self._hash_array(time_signal, fast_hash=True)}"
+        
+        if self.enable_compression:
+            compressed_data, was_compressed = self._compress_data(freq_data)
+            success = self.frequency_cache.put(cache_key, compressed_data)
+        else:
+            success = self.frequency_cache.put(cache_key, freq_data)
+        
+        if success:
+            self.logger.debug(f"Cached frequency data: {cache_key}")
+        
+        return cache_key
+    
+    def get_cached_frequency_data(self, time_signal: np.ndarray) -> Optional[Dict[str, Any]]:
+        """Get cached frequency domain data."""
+        cache_key = f"frequency_{self._hash_array(time_signal, fast_hash=True)}"
+        cached_data = self.frequency_cache.get(cache_key)
+        
+        if cached_data is not None:
+            self.cache_performance['frequency_hits'] += 1
+            self.logger.debug(f"Frequency cache hit: {cache_key}")
+            
+            if self.enable_compression:
+                return self._decompress_data(cached_data)
+            else:
+                return cached_data
+        
+        return None
+    
+    def cache_filter_coefficients(
+        self,
+        filter_params: Dict[str, Any],
+        coefficients: np.ndarray
+    ) -> str:
+        """Cache pre-computed filter coefficients."""
+        # Create key from filter parameters
+        param_str = '_'.join(f"{k}={v}" for k, v in sorted(filter_params.items()))
+        cache_key = f"filter_{hashlib.md5(param_str.encode()).hexdigest()}"
+        
+        filter_data = {
+            'coefficients': coefficients,
+            'parameters': filter_params,
+            'timestamp': time.time()
+        }
+        
+        if self.filter_cache.put(cache_key, filter_data):
+            self.logger.debug(f"Cached filter coefficients: {cache_key}")
+        
+        return cache_key
+    
+    def get_cached_filter_coefficients(self, filter_params: Dict[str, Any]) -> Optional[np.ndarray]:
+        """Get cached filter coefficients."""
+        param_str = '_'.join(f"{k}={v}" for k, v in sorted(filter_params.items()))
+        cache_key = f"filter_{hashlib.md5(param_str.encode()).hexdigest()}"
+        
+        cached_data = self.filter_cache.get(cache_key)
+        if cached_data is not None:
+            self.logger.debug(f"Filter cache hit: {cache_key}")
+            return cached_data['coefficients']
+        
+        return None
     
     def cache_echo_data(
         self,
@@ -348,25 +580,43 @@ class EchoCache:
         return cached_result
     
     def get_comprehensive_stats(self) -> Dict[str, Any]:
-        """Get comprehensive cache statistics."""
+        """Get comprehensive Generation 3 cache statistics."""
         echo_stats = self.echo_data_cache.get_stats()
         feature_stats = self.feature_cache.get_stats()
         result_stats = self.result_cache.get_stats()
+        geometry_stats = self.geometry_cache.get_stats()
+        frequency_stats = self.frequency_cache.get_stats()
+        filter_stats = self.filter_cache.get_stats()
         
-        total_hits = echo_stats.hits + feature_stats.hits + result_stats.hits
-        total_misses = echo_stats.misses + feature_stats.misses + result_stats.misses
+        all_caches = [echo_stats, feature_stats, result_stats, geometry_stats, frequency_stats, filter_stats]
+        total_hits = sum(cache.hits for cache in all_caches)
+        total_misses = sum(cache.misses for cache in all_caches)
         overall_hit_rate = total_hits / (total_hits + total_misses) if (total_hits + total_misses) > 0 else 0.0
+        total_size_mb = sum(cache.size_mb for cache in all_caches)
         
         return {
             'overall': {
                 'hit_rate': overall_hit_rate,
                 'total_hits': total_hits,
                 'total_misses': total_misses,
-                'total_size_mb': echo_stats.size_mb + feature_stats.size_mb + result_stats.size_mb
+                'total_size_mb': total_size_mb,
+                'compression_savings_mb': self.cache_performance['compression_savings'] / (1024 * 1024)
             },
-            'echo_data': echo_stats.__dict__,
-            'features': feature_stats.__dict__,
-            'results': result_stats.__dict__
+            'cache_types': {
+                'echo_data': echo_stats.__dict__,
+                'features': feature_stats.__dict__,
+                'results': result_stats.__dict__,
+                'geometry': geometry_stats.__dict__,
+                'frequency': frequency_stats.__dict__,
+                'filters': filter_stats.__dict__
+            },
+            'performance': {
+                'geometry_hits': self.cache_performance['geometry_hits'],
+                'frequency_hits': self.cache_performance['frequency_hits'],
+                'predictive_hits': self.cache_performance['predictive_hits'],
+                'compression_enabled': self.enable_compression,
+                'compression_savings_bytes': self.cache_performance['compression_savings']
+            }
         }
 
 

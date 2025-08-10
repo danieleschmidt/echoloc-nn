@@ -601,7 +601,7 @@ class HealthChecker:
         return self.check_history[-limit:] if self.check_history else []
 
 class EnhancedHealthChecker:
-    \"\"\"
+    """
     Enhanced health checker with quantum planning monitoring.
     
     Provides comprehensive health checking including:
@@ -609,7 +609,7 @@ class EnhancedHealthChecker:
     - Quantum planning metrics
     - Ultrasonic localization accuracy
     - Hardware status and connectivity
-    \"\"\"
+    """
     
     def __init__(self, check_interval: float = 30.0):
         self.check_interval = check_interval
@@ -633,9 +633,9 @@ class EnhancedHealthChecker:
         self.monitor_thread = None
         
     def register_quantum_component(self, name: str, health_check_func: Callable[[], Tuple[HealthStatus, str]]):
-        \"\"\"Register quantum planning component for health monitoring.\"\"\"
+        """Register quantum planning component for health monitoring."""
         self.registered_components[name] = health_check_func
-        self.logger.info(f\"Registered quantum component: {name}\")
+        self.logger.info(f"Registered quantum component: {name}")
         
     def record_quantum_metrics(self, 
                               planning_time_ms: float,
@@ -644,7 +644,7 @@ class EnhancedHealthChecker:
                               quantum_coherence: float = 1.0,
                               position_confidence: float = 1.0,
                               success_rate: float = 1.0):
-        \"\"\"Record quantum planning performance metrics.\"\"\"
+        """Record quantum planning performance metrics."""
         
         metrics = QuantumPlanningMetrics(
             timestamp=time.time(),
@@ -662,7 +662,7 @@ class EnhancedHealthChecker:
         self._check_quantum_thresholds(metrics)
         
     def get_quantum_health_summary(self) -> Dict[str, Any]:
-        \"\"\"Get quantum planning health summary.\"\"\"
+        """Get quantum planning health summary."""
         if not self.quantum_metrics_history:
             return {'no_data': True}
             
@@ -677,48 +677,48 @@ class EnhancedHealthChecker:
         }
         
     def _check_quantum_thresholds(self, metrics: QuantumPlanningMetrics):
-        \"\"\"Check quantum planning metrics against thresholds.\"\"\"
+        """Check quantum planning metrics against thresholds."""
         
         # Planning time thresholds
         if metrics.planning_time_ms > 10000:  # 10 seconds
             self._create_alert(
                 AlertLevel.CRITICAL, 'quantum_planning',
-                f\"Planning time critical: {metrics.planning_time_ms:.0f}ms\"
+                f"Planning time critical: {metrics.planning_time_ms:.0f}ms"
             )
         elif metrics.planning_time_ms > 5000:  # 5 seconds
             self._create_alert(
                 AlertLevel.WARNING, 'quantum_planning',
-                f\"Planning time high: {metrics.planning_time_ms:.0f}ms\"
+                f"Planning time high: {metrics.planning_time_ms:.0f}ms"
             )
             
         # Quantum coherence thresholds
         if metrics.quantum_coherence < 0.1:
             self._create_alert(
                 AlertLevel.CRITICAL, 'quantum_coherence',
-                f\"Quantum coherence critical: {metrics.quantum_coherence:.3f}\"
+                f"Quantum coherence critical: {metrics.quantum_coherence:.3f}"
             )
         elif metrics.quantum_coherence < 0.3:
             self._create_alert(
                 AlertLevel.WARNING, 'quantum_coherence',
-                f\"Quantum coherence low: {metrics.quantum_coherence:.3f}\"
+                f"Quantum coherence low: {metrics.quantum_coherence:.3f}"
             )
             
         # Position confidence thresholds
         if metrics.position_confidence < 0.5:
             self._create_alert(
                 AlertLevel.CRITICAL, 'position_confidence',
-                f\"Position confidence critical: {metrics.position_confidence:.3f}\"
+                f"Position confidence critical: {metrics.position_confidence:.3f}"
             )
         elif metrics.position_confidence < 0.7:
             self._create_alert(
                 AlertLevel.WARNING, 'position_confidence',
-                f\"Position confidence low: {metrics.position_confidence:.3f}\"
+                f"Position confidence low: {metrics.position_confidence:.3f}"
             )
             
     def _create_alert(self, level: AlertLevel, component: str, message: str, metadata: Optional[Dict] = None):
-        \"\"\"Create and manage alert.\"\"\"
+        """Create and manage alert."""
         
-        alert_id = f\"{component}_{level.value}_{int(time.time())}\"
+        alert_id = f"{component}_{level.value}_{int(time.time())}"
         
         # Check for duplicate alert
         existing_alerts = [a for a in self.active_alerts.values() 
@@ -745,15 +745,15 @@ class EnhancedHealthChecker:
             try:
                 callback(alert)
             except Exception as e:
-                self.logger.error(f\"Alert callback failed: {e}\")
+                self.logger.error(f"Alert callback failed: {e}")
                 
         # Log alert
         log_level = getattr(self.logger, level.value.lower(), self.logger.info)
-        log_level(f\"[{component.upper()}] {message}\")
+        log_level(f"[{component.upper()}] {message}")
 
 # Global enhanced health checker
 _global_enhanced_health_checker = EnhancedHealthChecker()
 
 def get_global_enhanced_health_checker() -> EnhancedHealthChecker:
-    \"\"\"Get the global enhanced health checker instance.\"\"\"
+    """Get the global enhanced health checker instance."""
     return _global_enhanced_health_checker
