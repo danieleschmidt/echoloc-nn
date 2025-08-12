@@ -709,7 +709,7 @@ class EncryptionEngine:
         if algorithm == 'lattice':
             # Generate ephemeral key pair
             key_id = self.key_manager.generate_key('lattice_private', 'kyber', expiry_hours=1)
-            public_key_id = key_id.replace('private', public')
+            public_key_id = key_id.replace('private', 'public')
             
             public_key = self.key_manager.get_key(public_key_id)
             if not public_key:
@@ -879,3 +879,91 @@ class EncryptionEngine:
             stats['usage_stats']['average_usage'] = total_usage / len(keys)
         
         return stats
+
+
+class SecureCommunication:
+    """
+    High-level secure communication interface.
+    
+    Provides a simple API for secure message exchange using quantum-resistant
+    cryptography and comprehensive security measures.
+    """
+    
+    def __init__(self):
+        self.crypto = QuantumResistantCrypto()
+        self.key_manager = SecureKeyManager()
+        self.encryption_engine = EncryptionEngine(self.key_manager)
+    
+    def establish_secure_channel(self, peer_id: str) -> str:
+        """Establish a secure communication channel with a peer."""
+        return self.crypto.establish_secure_channel(peer_id)
+    
+    def send_secure_message(self, message: bytes, peer_id: str) -> bytes:
+        """Send a secure message to a peer."""
+        return self.encryption_engine.hybrid_encrypt(message, peer_id)
+    
+    def receive_secure_message(self, encrypted_message: bytes, peer_id: str) -> bytes:
+        """Receive and decrypt a secure message from a peer."""
+        return self.encryption_engine.hybrid_decrypt(encrypted_message, peer_id)
+
+
+def generate_secure_random_bytes(length: int) -> bytes:
+    """
+    Generate cryptographically secure random bytes.
+    
+    Uses the operating system's secure random number generator
+    to provide high-quality entropy for cryptographic operations.
+    
+    Args:
+        length: Number of random bytes to generate
+        
+    Returns:
+        Cryptographically secure random bytes
+        
+    Raises:
+        ValueError: If length is negative
+        OSError: If the secure random source is unavailable
+    """
+    import os
+    
+    if length < 0:
+        raise ValueError("Length must be non-negative")
+    
+    return os.urandom(length)
+
+
+def generate_secure_random_key(key_length: int = 32) -> bytes:
+    """
+    Generate a secure random cryptographic key.
+    
+    Args:
+        key_length: Length of the key in bytes (default: 32 bytes = 256 bits)
+        
+    Returns:
+        Secure random key bytes
+    """
+    return generate_secure_random_bytes(key_length)
+
+
+def secure_random_choice(choices: list):
+    """
+    Securely choose a random element from a list.
+    
+    Uses cryptographically secure randomness instead of the standard
+    random module for security-sensitive applications.
+    
+    Args:
+        choices: List of choices to select from
+        
+    Returns:
+        Randomly selected element from choices
+        
+    Raises:
+        ValueError: If choices is empty
+    """
+    import secrets
+    
+    if not choices:
+        raise ValueError("Cannot choose from empty list")
+    
+    return secrets.choice(choices)

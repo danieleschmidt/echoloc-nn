@@ -12,6 +12,7 @@ help:
 	@echo "  security-check Run security vulnerability scans"
 	@echo "  all-checks   Run all quality checks"
 	@echo "  build        Build package"
+	@echo "  deploy       Deploy to production"
 
 install:
 	pip install -e .
@@ -67,3 +68,34 @@ docs:
 # Clean and rebuild documentation  
 docs-clean:
 	cd docs && make clean && make html
+
+# Production deployment commands
+deploy: build
+	@echo "Starting production deployment..."
+	docker-compose -f docker-compose.yml build echoloc-prod
+	docker-compose -f docker-compose.yml up -d echoloc-prod redis influxdb grafana
+	@echo "Production deployment completed"
+
+deploy-dev:
+	@echo "Starting development deployment..."
+	docker-compose -f docker-compose.yml build echoloc-dev
+	docker-compose -f docker-compose.yml up -d echoloc-dev
+	@echo "Development deployment completed"
+
+deploy-stop:
+	@echo "Stopping all services..."
+	docker-compose -f docker-compose.yml down
+	@echo "All services stopped"
+
+deploy-logs:
+	docker-compose -f docker-compose.yml logs -f echoloc-prod
+
+health-check:
+	curl -f http://localhost:8080/health || echo "Health check failed"
+
+# CI/CD pipeline commands
+ci-test: install-dev all-checks
+	@echo "CI tests completed"
+
+ci-deploy: ci-test build deploy
+	@echo "CI deployment completed"

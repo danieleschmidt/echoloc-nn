@@ -1063,7 +1063,7 @@ class RecoveryManager:
         return dict(sorted_actions[:10])  # Top 10
 
 
-class FaultTolerantEchoLocator:
+class FaultTolerantSystem:
     """
     Fault-tolerant wrapper for EchoLocator with comprehensive error handling.
     
@@ -1359,3 +1359,7 @@ class RedundantSensorArray:
             'failed_arrays': len(self.failed_arrays),
             'redundancy_level': 'high' if len(self.active_arrays) > 1 else 'none' if len(self.active_arrays) == 0 else 'low'
         }
+
+
+# Aliases for compatibility
+FaultTolerantEchoLocator = FaultTolerantSystem
