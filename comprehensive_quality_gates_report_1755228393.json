@@ -1,0 +1,35 @@
+{
+  "timestamp": 1755228392.9456556,
+  "validation_id": "qg_1755228392",
+  "overall_status": "FAIL",
+  "quality_gates": {
+    "syntax": true,
+    "architecture": false,
+    "generation_1_simple": false,
+    "generation_2_robust": true,
+    "generation_3_optimized": true,
+    "integration": false,
+    "production_readiness": true,
+    "performance_targets": true
+  },
+  "detailed_results": {
+    "syntax_errors": [],
+    "production_components": {
+      "configuration": true,
+      "deployment": true,
+      "documentation": true,
+      "testing": true
+    }
+  },
+  "summary": {
+    "total_gates": 8,
+    "passed_gates": 5,
+    "pass_rate": 0.625,
+    "critical_failures": [
+      "architecture",
+      "generation_1_simple",
+      "integration"
+    ]
+  },
+  "timestamp_readable": "2025-08-15 03:26:32"
+}
