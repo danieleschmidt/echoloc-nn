@@ -8,7 +8,7 @@ import numpy as np
 import time
 import threading
 from queue import Queue, Empty
-import serial
+# Optional hardware dependency\ntry:\n    import serial\n    SERIAL_AVAILABLE = True\nexcept ImportError:\n    SERIAL_AVAILABLE = False\n    # Mock serial for testing without hardware\n    class MockSerial:\n        def __init__(self, *args, **kwargs): pass\n        def write(self, data): return len(data)\n        def read(self, size=1): return b'\\x00' * size\n        def close(self): pass\n        def is_open(self): return True\n    \n    class MockSerialModule:\n        Serial = MockSerial\n    \n    serial = MockSerialModule()
 import yaml
 
 

@@ -6,8 +6,19 @@ sensor configurations and microcontroller interfaces.
 """
 
 from .ultrasonic_array import UltrasonicArray, SensorConfig
-from .arduino_interface import ArduinoInterface, ArduinoCommands
-from .raspberry_pi import RaspberryPiDeployment, EdgeOptimizer
+
+# Optional hardware interfaces - available when dependencies installed
+try:
+    from .arduino_interface import ArduinoInterface, ArduinoCommands
+    from .raspberry_pi import RaspberryPiDeployment, EdgeOptimizer
+    HARDWARE_AVAILABLE = True
+except ImportError:
+    # Mock classes for software-only testing
+    ArduinoInterface = None
+    ArduinoCommands = None
+    RaspberryPiDeployment = None
+    EdgeOptimizer = None
+    HARDWARE_AVAILABLE = False
 
 __all__ = [
     "UltrasonicArray",
@@ -15,5 +26,6 @@ __all__ = [
     "ArduinoInterface", 
     "ArduinoCommands",
     "RaspberryPiDeployment",
-    "EdgeOptimizer"
+    "EdgeOptimizer",
+    "HARDWARE_AVAILABLE"
 ]
