@@ -7,7 +7,7 @@ for quantum planning and ultrasonic localization systems.
 
 import time
 import threading
-import psutil
+# import psutil  # Optional dependency - handle gracefully\ntry:\n    import psutil\n    PSUTIL_AVAILABLE = True\nexcept ImportError:\n    PSUTIL_AVAILABLE = False
 import numpy as np
 from typing import Dict, List, Optional, Any, Callable, Tuple
 from dataclasses import dataclass, field

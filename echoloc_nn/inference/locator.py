@@ -12,7 +12,7 @@ from queue import Queue, Empty
 import logging
 
 from ..models.base import EchoLocBaseModel
-from ..models.hybrid_architecture import EchoLocModel
+from ..models.cnn_transformer import EchoLocModel
 from ..signal_processing.preprocessing import PreProcessor
 from ..hardware.ultrasonic_array import UltrasonicArray
 
