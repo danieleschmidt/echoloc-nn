@@ -6,7 +6,11 @@ from typing import Tuple, Optional, Dict, Any, List
 from dataclasses import dataclass
 import time
 import numpy as np
-import torch
+try:
+    import torch
+except ImportError:
+    from ..utils.torch_fallback import get_torch
+    torch = get_torch()
 import threading
 from queue import Queue, Empty
 import logging
@@ -15,6 +19,16 @@ from ..models.base import EchoLocBaseModel
 from ..models.cnn_transformer import EchoLocModel
 from ..signal_processing.preprocessing import PreProcessor
 from ..hardware.ultrasonic_array import UltrasonicArray
+from ..utils.robust_inference import RobustInferenceEngine
+from ..optimization.performance_engine import PerformanceEngine, PerformanceConfig
+try:
+    from ..globalization.i18n import get_message
+    from ..globalization.compliance import ComplianceManager, DataRetentionPolicy, PrivacyMetadata
+    GLOBAL_FEATURES_AVAILABLE = True
+except ImportError:
+    GLOBAL_FEATURES_AVAILABLE = False
+    def get_message(category, key, **kwargs):
+        return f"{category}.{key}"
 
 
 @dataclass
@@ -41,6 +55,12 @@ class InferenceConfig:
     # Real-time constraints  
     max_latency_ms: float = 50.0
     target_fps: float = 20.0
+    
+    # Performance optimization
+    enable_caching: bool = True
+    enable_concurrent_processing: bool = True
+    cache_size: int = 500
+    max_workers: int = 4
     
     def __post_init__(self):
         if self.preprocess_config is None:
@@ -84,13 +104,25 @@ class EchoLocator:
             self.model = self._load_model(self.config.model_path)
         else:
             # Default model for demo
-            self.model = EchoLocModel(n_sensors=4, model_size="base")
+            self.model = EchoLocModel(n_sensors=4, chirp_length=2048)
             
         self.model.to(self.device)
         self.model.eval()
         
         # Initialize components
         self.preprocessor = PreProcessor()
+        self.robust_engine = RobustInferenceEngine(max_failures=5, failure_timeout=60.0)
+        
+        # Initialize performance engine
+        perf_config = PerformanceConfig(
+            cache_size=self.config.cache_size,
+            enable_cache=self.config.enable_caching,
+            enable_concurrent_processing=self.config.enable_concurrent_processing,
+            max_workers=self.config.max_workers,
+            target_latency_ms=self.config.max_latency_ms,
+            enable_auto_scaling=True
+        )
+        self.performance_engine = PerformanceEngine(perf_config)
         
         # State tracking
         self.last_position = np.array([0.0, 0.0, 0.0])
@@ -145,16 +177,39 @@ class EchoLocator:
         """
         start_time = time.time()
         
-        try:
+        def _optimized_inference(data: np.ndarray) -> Tuple[np.ndarray, float]:
+            """Wrapper for optimized inference."""
             # Preprocess echo data
             processed_echo = self.preprocessor.preprocess_pipeline(
-                echo_data, self.config.preprocess_config
+                data, self.config.preprocess_config
             )
             
-            # Model inference
-            position, confidence = self.model.predict_position(
-                processed_echo, sensor_positions
+            # Robust model inference with comprehensive error handling
+            position, confidence, metadata = self.robust_engine.robust_inference(
+                self.model, processed_echo, fallback_position=self.last_position
             )
+            
+            return position, confidence
+        
+        try:
+            # Use performance-optimized inference
+            position, confidence, perf_metadata = self.performance_engine.optimized_inference(
+                _optimized_inference,
+                echo_data,
+                use_cache=True,
+                use_concurrent=False  # Single request, no need for concurrency
+            )
+            
+            # Log performance optimizations
+            if perf_metadata.get('cache_hit'):
+                self.logger.debug("Cache hit - using cached result")
+            if perf_metadata.get('concurrent_execution'):
+                self.logger.debug("Used concurrent processing")
+                
+            # Log optimization time
+            opt_time = perf_metadata.get('optimization_time_ms', 0)
+            if opt_time > 5:  # Only log if significant
+                self.logger.debug(f"Performance optimization took {opt_time:.1f}ms")
             
             # Post-process results
             if self.config.position_smoothing and self.is_initialized:
@@ -187,7 +242,7 @@ class EchoLocator:
             return position, confidence
             
         except Exception as e:
-            self.logger.error(f"Inference failed: {e}")
+            self.logger.error(f"Critical inference failure: {e}")
             # Return last known position with zero confidence
             return self.last_position, 0.0
     
@@ -388,6 +443,43 @@ class EchoLocator:
             'target_fps': self.config.target_fps,
             'meets_latency_target': np.mean(inference_times) < self.config.max_latency_ms
         }
+    
+    def get_health_status(self) -> Dict[str, Any]:
+        """Get comprehensive system health status."""
+        performance_stats = self.get_performance_stats()
+        robust_health = self.robust_engine.get_health_status()
+        perf_engine_stats = self.performance_engine.get_performance_stats()
+        
+        # Combine statistics
+        health_status = {
+            **performance_stats,
+            **robust_health,
+            **perf_engine_stats,
+            "model_type": self.model.__class__.__name__,
+            "device": str(self.device),
+            "preprocessor_initialized": self.preprocessor is not None,
+            "performance_engine_initialized": self.performance_engine is not None,
+            "last_position": self.last_position.tolist(),
+        }
+        
+        # Overall health assessment
+        issues = []
+        if robust_health.get('circuit_breaker_open'):
+            issues.append("Circuit breaker is open")
+        if robust_health.get('success_rate', 1.0) < 0.8:
+            issues.append("Low success rate")
+        if performance_stats.get('avg_inference_time_ms', 0) > self.config.max_latency_ms:
+            issues.append("High latency")
+        
+        # Performance optimization health
+        cache_hit_rate = perf_engine_stats.get('cache_hit_rate', 0)
+        if cache_hit_rate < 0.1 and perf_engine_stats.get('cache_total_requests', 0) > 10:
+            issues.append("Low cache efficiency")
+        
+        health_status['issues'] = issues
+        health_status['overall_status'] = 'healthy' if not issues else 'degraded'
+        
+        return health_status
     
     def reset_state(self):
         """Reset internal state."""

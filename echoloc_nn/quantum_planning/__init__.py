@@ -11,12 +11,26 @@ Key Components:
 - PlanningMetrics: Performance evaluation and monitoring
 """
 
-from .planner import QuantumTaskPlanner, PlanningConfig
-from .task_graph import TaskGraph, Task, TaskDependency, TaskType
-from .optimizer import QuantumOptimizer, AnnealingSchedule
-from .metrics import PlanningMetrics
-from .optimizer import OptimizationResults
-from .integration import EchoLocPlanningBridge
+try:
+    from .planner import QuantumTaskPlanner, PlanningConfig
+    from .task_graph import TaskGraph, Task, TaskDependency, TaskType
+    from .optimizer import QuantumOptimizer, AnnealingSchedule
+    from .metrics import PlanningMetrics
+    from .optimizer import OptimizationResults
+    from .integration import EchoLocPlanningBridge
+except ImportError:
+    # Quantum planning modules not available without dependencies
+    QuantumTaskPlanner = None
+    PlanningConfig = None
+    TaskGraph = None
+    Task = None
+    TaskDependency = None
+    TaskType = None
+    QuantumOptimizer = None
+    AnnealingSchedule = None
+    PlanningMetrics = None
+    OptimizationResults = None
+    EchoLocPlanningBridge = None
 
 __all__ = [
     'QuantumTaskPlanner',
