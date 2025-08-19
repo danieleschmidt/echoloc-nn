@@ -6,8 +6,13 @@ from typing import Tuple, Optional, List, Dict, Any, Union
 import numpy as np
 import scipy.signal as signal
 from scipy.stats import zscore
-import torch
-import torch.nn.functional as F
+try:
+    import torch
+    import torch.nn.functional as F
+except ImportError:
+    from ..utils.torch_fallback import get_torch
+    torch = get_torch()
+    F = torch.nn
 from concurrent.futures import ThreadPoolExecutor
 import threading
 from ..utils.logging_config import get_logger
