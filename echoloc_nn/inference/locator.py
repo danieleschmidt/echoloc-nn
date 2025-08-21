@@ -15,8 +15,13 @@ import threading
 from queue import Queue, Empty
 import logging
 
-from ..models.base import EchoLocBaseModel
-from ..models.cnn_transformer import EchoLocModel
+try:
+    from ..models.hybrid_architecture import EchoLocModel
+    from ..models.pretrained import load_pretrained_model
+except ImportError:
+    # Fallback when models not available
+    EchoLocModel = None
+    load_pretrained_model = None
 from ..signal_processing.preprocessing import PreProcessor
 from ..hardware.ultrasonic_array import UltrasonicArray
 from ..utils.robust_inference import RobustInferenceEngine
@@ -86,7 +91,7 @@ class EchoLocator:
     
     def __init__(
         self,
-        model: Optional[EchoLocBaseModel] = None,
+        model: Optional[Any] = None,
         config: Optional[InferenceConfig] = None
     ):
         self.config = config or InferenceConfig()
@@ -104,10 +109,15 @@ class EchoLocator:
             self.model = self._load_model(self.config.model_path)
         else:
             # Default model for demo
-            self.model = EchoLocModel(n_sensors=4, chirp_length=2048)
+            if EchoLocModel is not None:
+                self.model = EchoLocModel(n_sensors=4, chirp_length=2048)
+            else:
+                # Fallback mock model
+                self.model = None
             
-        self.model.to(self.device)
-        self.model.eval()
+        if self.model is not None:
+            self.model.to(self.device)
+            self.model.eval()
         
         # Initialize components
         self.preprocessor = PreProcessor()

@@ -18,11 +18,13 @@ __email__ = "daniel@example.com"
 
 # Core imports for user convenience
 try:
-    from .models import EchoLocModel, CNNTransformerHybrid
+    from .models import EchoLocModel, CNNTransformerHybrid, create_model, load_pretrained_model
 except ImportError:
     # Models not available, provide fallback
     EchoLocModel = None
     CNNTransformerHybrid = None
+    create_model = None
+    load_pretrained_model = None
 from .inference import EchoLocator, InferenceConfig
 from .hardware import UltrasonicArray, SensorConfig
 from .signal_processing import ChirpGenerator, EchoProcessor
@@ -189,6 +191,8 @@ __all__ = [
     "__email__",
     "EchoLocModel",
     "CNNTransformerHybrid",
+    "create_model",
+    "load_pretrained_model",
     "EchoLocator",
     "InferenceConfig",
     "UltrasonicArray",
