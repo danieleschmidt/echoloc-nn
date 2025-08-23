@@ -150,7 +150,7 @@ class EchoLocator:
         self.logger.info(f"EchoLocator initialized on {self.device}")
         self.logger.info(f"Model: {self.model.__class__.__name__}")
         
-    def _load_model(self, model_path: str) -> EchoLocBaseModel:
+    def _load_model(self, model_path: str) -> EchoLocModel:
         """Load model from checkpoint."""
         try:
             if hasattr(EchoLocModel, 'load_model'):

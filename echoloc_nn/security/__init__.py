@@ -26,21 +26,21 @@ from .authentication import (
 
 from .secure_comm import (
     SecureChannel,
-    EncryptedProtocol,
-    TLSManager
+    MessageAuthenticator,
+    SecureProtocol
 )
 
-from .threat_detection import (
-    IntrusionDetector,
-    AnomalyMonitor,
-    SecurityAnalyzer
-)
+# from .threat_detection import (
+#     IntrusionDetector,
+#     AnomalyMonitor,
+#     SecurityAnalyzer
+# )
 
-from .data_protection import (
-    PrivacyPreserver,
-    DataSanitizer,
-    SecureComputation
-)
+# from .data_protection import (
+#     PrivacyPreserver,
+#     DataSanitizer,
+#     SecureComputation
+# )
 
 __all__ = [
     # Cryptography
