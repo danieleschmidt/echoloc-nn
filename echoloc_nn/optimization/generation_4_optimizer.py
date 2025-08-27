@@ -34,20 +34,28 @@ class Generation4Config:
     enable_knowledge_distillation: bool = True
     enable_tensorrt_plugins: bool = True
     
+    # Enhanced Progressive Quality Gates
+    enable_progressive_quality_gates: bool = True
+    continuous_performance_monitoring: bool = True
+    adaptive_optimization_thresholds: bool = True
+    
     # NAS Configuration
     nas_population_size: int = 30
     nas_generations: int = 50
     nas_early_stopping: bool = True
+    quantum_enhanced_nas: bool = True  # New: Quantum NAS
     
     # Quantization Configuration
     quantization_strategy: str = "mixed_precision"  # "mixed_precision", "learnable", "physics_aware"
     target_compression: float = 5.0  # Target compression ratio
     accuracy_threshold: float = 0.95  # Minimum accuracy retention
+    dynamic_quantization_adjustment: bool = True  # New: Adaptive quantization
     
     # Physics Optimization
     physics_constraints: bool = True
     frequency_aware_pruning: bool = True
     beamforming_optimization: bool = True
+    acoustic_environment_adaptation: bool = True  # New: Environment adaptation
     
     # Knowledge Distillation
     teacher_model_size: str = "large"
